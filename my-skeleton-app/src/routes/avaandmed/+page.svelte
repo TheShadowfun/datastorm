@@ -1,11 +1,6 @@
-<!-- YOU CAN DELETE EVERYTHING IN THIS PAGE -->
 <script>
-	import { AppShell } from '@skeletonlabs/skeleton';
-	import Seirekaart from './seirekaart.svelte';
-	import Sidebar from './sidebar.svelte';
+    import Sidebar from '../sidebar.svelte';
 </script>
-
-
 
 <div class="flex bg-white h-full">
 	<Sidebar />
@@ -18,4 +13,3 @@
   </p>
 	</div>
 </div>
-
