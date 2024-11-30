@@ -1,4 +1,4 @@
-<div class="sidebar flex h-screen">
+<div class="sidebar flex h-sceen min-h-screen">
     <!-- sidebar -->
     <div class="hidden md:flex flex-col w-64">
         <div class="flex flex-col flex-1 overflow-y-auto">

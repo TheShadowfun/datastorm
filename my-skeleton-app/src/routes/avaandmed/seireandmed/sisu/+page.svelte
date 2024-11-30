@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Seirekaart from './seirekaart.svelte';
+  //import Seirekaart from './seirekaart.svelte';
   import Sidebar from '../../../sidebar.svelte';
   import { Autocomplete } from '@skeletonlabs/skeleton';
   import { InputChip } from '@skeletonlabs/skeleton';
@@ -137,19 +137,13 @@
 
   const fetchWeatherData = async (): Promise<any[]> => {
     const parameters: Record<string, string> = {
-      aasta: `gte.${dateObject.startYear}`,
-      element_kood: 'eq.TAN1H',
-      tund: 'gte.0',
-      jaam_kood: 'eq.AJHARK01'
+        aasta: `gte.${dateObject.startYear}`,
+        kuu: `gte.${dateObject.startMonth}`,
+        paev: `gte.${dateObject.startDay}`,
+        element_kood: `eq.${paramCollectionList}`,
+        tund: "gte.0",
+        jaam_kood: `eq.${placeCollectionList}`
     };
-
-    if (dateObject.startYear === dateObject.endYear) {
-      parameters.kuu = `gte.${dateObject.startMonth}`;
-    }
-
-    if (dateObject.startYear === dateObject.endYear && dateObject.startMonth === dateObject.endMonth) {
-      parameters.paev = `gte.${dateObject.startDay}`;
-    }
 
     const headers = {
       'Accept-Profile': 'apijahiala',
@@ -174,15 +168,23 @@
       return [];
     }
   };
-
+  
+  let rows = [{date: '', values: ['']}] //{date: '2023-01-02', values: Array(6).fill('')}
+  
   const handleFetchWeatherData = async () => {
     try {
       const fetchedData = await fetchWeatherData();
       console.log('Fetched Data:', fetchedData);
       const filteredData = filterDataByEndDate(fetchedData, dateObject);
       console.log(filteredData);
+      rows = []
       filteredData.forEach(element => {
-        console.log(`Kuupäeval ${element.aasta}-${element.kuu}-${element.paev} oli väärtus ${element.vaartus}${element.element_yhik_eng}`)
+        rows = [...rows, {
+        date: element.tund !== undefined 
+    ? `${element.aasta}-${element.kuu}-${element.paev} kell ${element.tund <= 9 ? '0' : ''}${element.tund} `
+    : `${element.aasta}-${element.kuu}-${element.paev}`,
+  values: [`${element.vaartus}${element.element_yhik_eng}`]
+}];
       });
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -221,6 +223,19 @@
       return true;
     });
   };
+
+$: numColumns = Math.max(...rows.map(row => row.values.length)) + 1;
+
+let dateObject2 = {
+        paevLogic: 'lt',
+        paevInclude: false,
+        paev: '23',
+        kuuLogic: 'eq',
+        kuuInclude: false,
+        kuu: '7',
+        aastaLogic: 'lt',
+        aastaInclude: false,
+        aasta: '2024'}
 </script>
 
 <div class="flex bg-white min-h-screen">
@@ -239,35 +254,9 @@
 
     <!-- Filters and Data -->
     <div class="bg-white p-8 rounded-lg shadow-md border border-gray-300">
-      <div class="grid grid-cols-3 gap-8">
-        <!-- Ilmajaamad Filter -->
+      <div class="grid grid-cols-2 gap-8">
+        <!-- Left Column: Parameetrid -->
         <div>
-          <InputChip
-            class="w-full"
-            placeholder="Sisesta ilmajaamad..."
-            bind:input={inputChip}
-            bind:value={inputChipList}
-            name="chips"
-          />
-          <div class="card mt-4 p-4 border border-gray-200 rounded-lg max-h-48 overflow-y-auto" tabindex="-1">
-            <Autocomplete
-              bind:input={inputChip}
-              options={ilmaJaamad}
-              denylist={inputChipList}
-              on:selection={onInputChipSelect}
-            />
-          </div>
-        </div>
-
-        <!-- Seirekaart Component -->
-        <div class="col-span-2">
-          <Seirekaart class="border border-gray-200 rounded-lg shadow-md" />
-        </div>
-      </div>
-
-      <div class="mt-8 grid grid-cols-2 gap-8">
-        <!-- Ilma Parameetrid Filter -->
-        <div class="flex flex-col">
           <InputChip
             class="w-full"
             placeholder="Sisesta ilma parameetrid..."
@@ -285,6 +274,40 @@
           </div>
         </div>
 
+        <!-- Right Column: Ilmajaamad -->
+        <div>
+          <InputChip
+            class="w-full"
+            placeholder="Sisesta ilmajaamad..."
+            bind:input={inputChip}
+            bind:value={inputChipList}
+            name="chips"
+          />
+          <div class="card mt-4 p-4 border border-gray-200 rounded-lg max-h-48 overflow-y-auto bg-gray-50" tabindex="-1">
+            <Autocomplete
+              bind:input={inputChip}
+              options={ilmaJaamad}
+              denylist={inputChipList}
+              on:selection={onInputChipSelect}
+            />
+          </div>
+          <!-- Link to view Ilmajaamad locations -->
+          <p class="text-lg font-aino text-gray-800 mt-4">
+            Ilmajaamade asukohti saad vaadata 
+            <a 
+              href="https://www.ilmateenistus.ee/meist/vaatlusvork/" 
+              class="underline text-blue-600 hover:text-blue-800 transition"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              siit
+            </a>.
+          </p>
+        </div>
+      </div>
+
+      <!-- Date Range and Handle Data -->
+      <div class="mt-8 grid grid-cols-2 items-end gap-8">
         <!-- Date Range Filter -->
         <div>
           <label for="date-range-input" class="block text-lg font-medium text-gray-700 mb-2">
@@ -296,17 +319,21 @@
             placeholder="Kliki siia ja vali!"
             class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-gray-900"
           />
-          <!-- Handle Data Button -->
+        </div>
+
+        <!-- Handle Data Button -->
+        <div class="flex justify-end">
           <button
             id="handle-data"
-            class="mt-4 bg-blue-500 text-white py-3 px-6 rounded hover:bg-blue-600 shadow-md"
+            class="bg-blue-500 text-white py-3 px-10 rounded hover:bg-blue-600 shadow-md"
             on:click={handleFetchWeatherData}
           >
-            Handle Data
+            Filtreeri
           </button>
         </div>
       </div>
     </div>
   </div>
 </div>
+
 
