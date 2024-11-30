@@ -1,8 +1,4 @@
 <script lang="ts">
-    /*
-    soovin {varasema kui / hilisema kui / ainult} n. aasta [kaasaarvatud], [iga] {esimese / viimase / ainult} n. kuu [kaasaarvatud], [iga] {esimest / viimast / ainult} n.'dat päeva [kaasaarvatud]
-     */
-
 
     import { Autocomplete } from '@skeletonlabs/skeleton';
     import { InputChip } from '@skeletonlabs/skeleton';
@@ -184,17 +180,79 @@
     }
     };
 
-    const handleFetchWeatherData = async () => {
+
+    const handleFetchWeatherData = async (): Promise<void> => {
     try {
-        const fetchedData = await fetchWeatherData();
-        console.log("Fetched Data:", fetchedData);
-        // Further processing
+        const fetchedData: any[] = await fetchWeatherData(); // Fetch data
+        const filteredData: any[] = filterDataByEndDate(fetchedData, dateObject); // Filter data
+        console.log("Filtered Data:", filteredData);
+
+        if (!filteredData.length) {
+            throw new Error("No data available to convert to CSV");
+        }
+
+        // Convert data to CSV format
+        const convertToCSV = (data: any[]): string => {
+            // Extract headers from the first object in the array
+            const headers = Object.keys(data[0]).join(',');
+
+            // Map each object to a comma-separated row of values
+            const rows = data.map(entry => {
+                return Object.values(entry)
+                    .map(value => (typeof value === "string" ? `"${value}"` : value)) // Quote strings
+                    .join(',');
+            });
+
+            // Combine headers and rows with line breaks
+            return [headers, ...rows].join('\n');
+        };
+
+        // Generate CSV format
+        const csvFormat = convertToCSV(filteredData);
+        console.log("CSV Format:\n", csvFormat);
     } catch (error) {
         console.error("Error fetching data:", error);
     }
     };
 
+    const filterDataByEndDate = (
+    data: any[],
+    dateObject: { endYear: string; endMonth: string; endDay: string }
+    ): any[] => {
+        const endYear = parseInt(dateObject.endYear, 10);
+        const endMonth = parseInt(dateObject.endMonth, 10);
+        const endDay = parseInt(dateObject.endDay, 10);
 
+        return data.filter((entry) => {
+            const entryYear = entry.aasta;
+            const entryMonth = entry.kuu;
+            const entryDay = entry.paev;
+
+            // Compare year
+            if (entryYear > endYear) {
+                return false; // Exclude if the year is greater than endYear
+            }
+
+            // If the year matches, compare month
+            if (entryYear === endYear) {
+                if (entryMonth > endMonth) {
+                    return false; // Exclude if the month is greater than endMonth
+                }
+
+                // If the year and month match, compare day
+                if (entryMonth === endMonth) {
+                    if (entryDay > endDay) {
+                        return false; // Exclude if the day is greater than endDay
+                    }
+                }
+            }
+
+            // Include the entry if all conditions pass
+            return true;
+        });
+    };
+
+    
 </script>
 
 <div class="m-8">
@@ -246,11 +304,8 @@
     />
 </div>
 
-<button id="submit-button" class="mt-6 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600" on:click={fetchWeatherData}>
-        Submit
-    </button>
 <button id="handle-data" class="mt-6 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600" on:click={handleFetchWeatherData}>
-    Handle Data
+    Töötle andmeid!
 </button>
 
 </div>

@@ -1,5 +1,5 @@
 <script>
-  import Sidebar from '../sidebar.svelte';
+  import Sidebar from '../../sidebar.svelte';
 </script>
 
 
@@ -44,9 +44,9 @@
       </a>
 
       <!-- Link 4 -->
-      <a href="/meteoroloogiajaamade-seireandmed" class="flex items-center text-black text-lg font-medium hover:text-blue-600 transition">
+      <a href="/avaandmed/seireandmed/sisu" class="flex items-center text-black text-lg font-medium hover:text-blue-600 transition">
         <span class="mr-4">Meteoroloogiajaamade seireandmed</span>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+        <svg xmlns="/" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
           <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
         </svg>
       </a>

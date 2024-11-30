@@ -1,42 +1,39 @@
 <script>
-    let dateObject = {
-        paevLogic: '',
+    let dateObject2 = {
+        paevLogic: 'lt',
         paevInclude: false,
-        paev: '',
-        kuuLogic: '',
+        paev: '23',
+        kuuLogic: 'eq',
         kuuInclude: false,
-        kuu: '',
-        aastaLogic: '',
+        kuu: '7',
+        aastaLogic: 'lt',
         aastaInclude: false,
-        aasta: ''}
+        aasta: '2024'}
 </script>
 
-<h1>soovin<select bind:value={dateObject.aastaLogic} class="bg-transparent border-none text-blue-400">
+<h1>soovin<select bind:value={dateObject2.aastaLogic} class="bg-transparent border-none text-blue-400 w-38 p-3">
     <option value="eq">ainult</option>
     <option value="lt">varasema kui</option>
-    <option value="gt">hilisema kui kui</option>
+    <option value="gt">hilisema kui</option>
 </select>
 <input type="number" 
-    bind:value={dateObject.aasta} 
+    bind:value={dateObject2.aasta} 
     min="1980" 
     max="2024" 
-    class="bg-transparent border-none text-green-400"/>.aasta 
-(kaasaarvatud<input type="checkbox" bind:checked={dateObject.aastaInclude} class="opacity-50 rounded-md"/>) , [iga(juhul kui kuu valikus on valitud esimese või viimase)] 
-<select bind:value={dateObject.kuuLogic} class="bg-transparent border-none text-blue-400">
+    class="bg-transparent border-none text-green-400 p-1"/>aasta 
+<span class="opacity-50 {dateObject2.aastaLogic != 'eq' ? '' : 'hidden'}">(kaasaarvatud<input type="checkbox" bind:checked={dateObject2.aastaInclude} class="opacity-50 rounded-md w-3 h-3"/>)</span> , {dateObject2.kuuLogic != 'eq' && dateObject2.aastaLogic != 'eq' ? 'iga' : ''} 
+<select bind:value={dateObject2.kuuLogic} class="bg-transparent border-none text-blue-400  w-38 p-3">
 <option value="eq">ainult</option>
 <option value="lt">esimese</option>
 <option value="gt">viimase</option>
-</select> <input type="number" bind:value={dateObject.kuu} min="1" max="12" class="bg-transparent border-none text-green-400"/> kuu
-(kaasaarvatud<input type="checkbox" bind:checked={dateObject.kuuInclude} class="opacity-50 rounded-md"/>), [iga(juhul kui päeva valikus on valitud esimene või viimane)]
-<select bind:value={dateObject.paevLogic} class="bg-transparent border-none text-blue-400">
+</select> <input type="number" bind:value={dateObject2.kuu} min="1" max="12" class="bg-transparent border-none text-green-400 p-1"/> kuu
+<span class="opacity-50 {dateObject2.kuuLogic != 'eq' ? '' : 'hidden'}">(kaasaarvatud<input type="checkbox" bind:checked={dateObject2.kuuInclude} class="opacity-50 rounded-md w-3 h-3"/>)</span>, {dateObject2.paevLogic != 'eq' && dateObject2.kuuLogic != 'eq' ? 'iga' : ''} 
+<select bind:value={dateObject2.paevLogic} class="bg-transparent border-none text-blue-400  w-38 p-3">
     <option value="eq">ainult</option>
     <option value="lt">esimese</option>
     <option value="gt">viimase</option>
 </select>
-<input type="number" bind:value={dateObject.paev} min="1" max="31" class="bg-transparent border-none text-green-400"/> päeva
-(kaasaarvatud<input type="checkbox" bind:checked={dateObject.paevInclude} class="opacity-50 rounded-md"/>) andmeid</h1>
+<input type="number" bind:value={dateObject2.paev} min="1" max="31" class="bg-transparent border-none text-green-400 p-1"/> päeva
+<span class="opacity-50 {dateObject2.paevLogic != 'eq' ? '' : 'hidden'}">(kaasaarvatud<input type="checkbox" bind:checked={dateObject2.paevInclude} class="opacity-50 rounded-md w-3 h-3"/>)</span> andmeid</h1>
 
-<br>
-<p>aasta:{dateObject.aastaLogic}{dateObject.aastaInclude && dateObject.aastaLogic != 'eq' ? 'e' : ''}{dateObject.aasta}</p>
-<p>kuu:{dateObject.kuuLogic}{dateObject.kuuInclude && dateObject.kuuLogic != 'eq' ? 'e' : ''}{dateObject.kuu}</p>
-<p> paev:{dateObject.paevLogic}{dateObject.paevInclude && dateObject.paevLogic != 'eq' ? 'e' : ''}{dateObject.paev}</p>
+<!-- <p>aasta:{dateObject2.aastaLogic}{dateObject2.aastaInclude && dateObject2.aastaLogic != 'eq' ? 'e' : ''}{dateObject2.aasta}</p> -->

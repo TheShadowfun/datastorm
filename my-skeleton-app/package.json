@@ -21,6 +21,7 @@
     "@tailwindcss/typography": "0.5.15",
     "@types/eslint": "^9.6.0",
     "@types/flatpickr": "^3.1.4",
+    "@types/json2csv": "^5.0.7",
     "@types/node": "22.10.1",
     "autoprefixer": "10.4.20",
     "eslint": "^9.0.0",
@@ -42,6 +43,7 @@
   "dependencies": {
     "axios": "^1.7.8",
     "flatpickr": "^4.6.13",
+    "json2csv": "^6.0.0-alpha.2",
     "svelty-picker": "^5.2.9",
     "undersign": "^0.1.337"
   }

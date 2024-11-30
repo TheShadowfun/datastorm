@@ -1,4 +1,80 @@
-import fs from 'fs';
+// ON VAJA npm install axios
+
+const axios = require('axios');
+var fs = require('fs');
+
+// Dokobit API konfiguratsioon
+const API_BASE_URL = 'https://developers.dokobit.com/api';
+const API_KEY = 'TEIE_API_VÕTI'; // Asenda oma API-võtmega
+
+// Allkirjastatava dokumendi tee
+const DOCUMENT_PATH = './document.txt';
+
+(async () => {
+  try {
+    // 1. Lae dokument
+    console.log('Laen dokumenti...');
+    const documentContent = fs.readFileSync(DOCUMENT_PATH);
+
+    // 2. Algata allkirjastamine
+    console.log('Allkirjastamise alustamine...');
+    const initiateResponse = await axios.post(`${API_BASE_URL}/signature/json`, {
+      key: API_KEY,
+      type: 'bdoc', // Kasutame BDOC formaati
+      signers: [
+        {
+          id_code: '60001019906', // Kasutaja isikukood
+          country: 'EE',          // Riik
+          phone: '+37200000766',  // Telefoninumber
+        },
+      ],
+      file: {
+        name: 'document.txt',
+        content: documentContent.toString('base64'), // Edastame faili base64 formaadis
+      },
+    });
+
+    const sessionToken = initiateResponse.data.token;
+    console.log('Allkirjastamise sessioon algatatud, token:', sessionToken);
+
+    // 3. Kontrolli allkirjastamise staatust
+    console.log('Kontrollin allkirjastamise staatust...');
+    let status = 'pending';
+    while (status === 'pending') {
+      const statusResponse = await axios.get(`${API_BASE_URL}/signature/${sessionToken}`, {
+        params: { key: API_KEY },
+      });
+      status = statusResponse.data.status;
+      console.log('Staatus:', status);
+      if (status === 'pending') {
+        await new Promise((resolve) => setTimeout(resolve, 5000)); // Oota 5 sekundit
+      }
+    }
+
+    if (status !== 'completed') {
+      // @ts-ignore
+      throw new Error('Allkirjastamine ebaõnnestus, staatus:', status);
+    }
+
+    // 4. Lae allkirjastatud dokument alla
+    console.log('Laen allkirjastatud dokumendi alla...');
+    const downloadResponse = await axios.get(`${API_BASE_URL}/signature/${sessionToken}/download`, {
+      params: { key: API_KEY },
+      responseType: 'arraybuffer',
+    });
+
+    fs.writeFileSync('signed-document.bdoc', downloadResponse.data);
+    console.log('Allkirjastatud dokument salvestatud: signed-document.bdoc');
+  } catch (error) {
+    // @ts-ignore
+    console.error('Viga allkirjastamise protsessis:', error.message);
+  }
+})();
+
+
+
+
+/*import fs from 'fs';
 import crypto from 'crypto';
 declare module 'undersign';
 declare module 'undersign/lib/tsl';
@@ -69,3 +145,4 @@ const SMART_ID_COUNTRY_CODE = 'EE'; // Smart-ID kasutaja riigikood (nt EE Eesti 
     console.error('Viga Smart-ID kaudu dokumendi allkirjastamisel:', error);
   }
 })();
+*/

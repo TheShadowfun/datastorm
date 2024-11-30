@@ -1,7 +1,5 @@
 <!-- YOU CAN DELETE EVERYTHING IN THIS PAGE -->
-<script>
-	import { AppShell } from '@skeletonlabs/skeleton';
-	import Seirekaart from './seirekaart.svelte';
+<script>;
 	import Sidebar from './sidebar.svelte';
 </script>
 

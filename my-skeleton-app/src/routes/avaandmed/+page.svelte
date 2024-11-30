@@ -19,7 +19,7 @@
     <!-- 3x3 Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <!-- Card 1: Meteoroloogilise seire andmestik -->
-      <a href="/meteoroloogilise-seire-andmestik" class="relative group bg-white rounded-lg overflow-hidden shadow-lg block">
+      <a href="/avaandmed/seireandmed" class="relative group bg-white rounded-lg overflow-hidden shadow-lg block">
         <img src="avaandmed-pildid/meteo_seire_andmeallikad.png" alt="Meteoroloogilise seire andmestik" class="w-full h-48 object-cover">
         <div class="absolute inset-0 bg-black bg-opacity-50 group-hover:bg-opacity-60 transition"></div>
         <div class="absolute inset-0 flex items-center justify-center">
@@ -65,7 +65,7 @@
       </a>
 
       <!-- Card 6: Kliimaandmestik -->
-      <a href="static/some-link-6" class="relative group bg-white rounded-lg overflow-hidden shadow-lg block">
+      <a href="/avaandmed/seireandmed" class="relative group bg-white rounded-lg overflow-hidden shadow-lg block">
         <img src="/avaandmed-pildid/Kliima_visuaal.png" alt="Kliimaandmestik" class="w-full h-48 object-cover">
         <div class="absolute inset-0 bg-black bg-opacity-50 group-hover:bg-opacity-60 transition"></div>
         <div class="absolute inset-0 flex items-center justify-center">
