@@ -46,12 +46,6 @@
     ];
   
     const ilmaParameetrid: AutocompleteOption<string>[] = [
-      { label: "Keskmine tuulekiirus (viimased 10 min)", value: "WS10M" },
-      { label: "Tuule suund (viimased 10 min)", value: "WD10M" },
-      { label: "Keskmine tuulekiirus (10 min)", value: "WS10MA" },
-      { label: "Maksimaalne tuulekiirus (10 min)", value: "WS10MX" },
-      { label: "Tuule suund (10 min)", value: "WD10MA" },
-      { label: "Sademed (10 min)", value: "PR10M" },
       { label: "Maksimaalne tuulekiirus (1 tund)", value: "WSX1H" },
       { label: "Maksimaalne temperatuur (1 tund)", value: "TAX1H" },
       { label: "Minimaalne temperatuur (1 tund)", value: "TAN1H" },
@@ -133,53 +127,49 @@
   
     const url = 'https://keskkonnaandmed.envir.ee/f_kliima_tund';
 
-const fetchWeatherData = async (): Promise<any[]> => {
-    const headers = {
-        'Accept-Profile': 'apijahiala',
-        Accept: 'application/json'
-    };
+    const fetchWeatherData = async (): Promise<any[]> => {
+        const headers = {
+            'Accept-Profile': 'apijahiala',
+            Accept: 'application/json'
+        };
 
-    const results: any[] = [];
+        const results: any[] = [];
 
-    try {
-        // Loop through each parameter in paramCollectionList
-        for (const param of paramCollectionList) {
-            const parameters: Record<string, string> = {
-                aasta: `gte.${dateObject.startYear}`,
-                kuu: `gte.${dateObject.startMonth}`,
-                paev: `gte.${dateObject.startDay}`,
-                element_kood: `eq.${param}`,
-                tund: "gte.0",
-                jaam_kood: `eq.${placeCollectionList}`
-            };
+        try {
+            // Loop through each parameter in paramCollectionList
+            for (const param of paramCollectionList) {
+                const parameters: Record<string, string> = {
+                    aasta: `gte.${dateObject.startYear}`,
+                    kuu: `gte.${dateObject.startMonth}`,
+                    paev: `gte.${dateObject.startDay}`,
+                    element_kood: `eq.${param}`,
+                    tund: "gte.0",
+                    jaam_kood: `eq.${placeCollectionList}`
+                };
 
-            console.log(`Requesting data for parameter: ${param}`);
+                console.log(`Requesting data for parameter: ${param}`);
 
-            // Make an individual request for each parameter
-            const response = await axios.get(url, { headers, params: parameters });
+                // Make an individual request for each parameter
+                const response = await axios.get(url, { headers, params: parameters });
 
-            if (response.status === 200) {
-                results.push({
-                    data: response.data
-                });
-            } else {
-                console.error(`Error: ${response.status}, ${response.statusText}`);
+                if (response.status === 200) {
+                    results.push(response.data);
+                } else {
+                    console.error(`Error: ${response.status}, ${response.statusText}`);
+                }
             }
+
+            return results;
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.error(`Axios error: ${error.response?.status}, ${error.response?.data}`);
+            } else {
+                console.error(`Unexpected error: ${error}`);
+            }
+            return [];
         }
+        };
 
-        return results;
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            console.error(`Axios error: ${error.response?.status}, ${error.response?.data}`);
-        } else {
-            console.error(`Unexpected error: ${error}`);
-        }
-        return [];
-    }
-    };
-
-
-    
     let rows = [{date: '', values: ['']}] //{date: '2023-01-02', values: Array(6).fill('')}
     
     const handleFetchWeatherData = async () => {
@@ -236,6 +226,10 @@ const fetchWeatherData = async (): Promise<any[]> => {
     };
   
   $: numColumns = Math.max(...rows.map(row => row.values.length)) + 1;
+
+  // Advanced search
+
+  let isAdvancedBeingUsed = false;
   
   let dateObject2 = {
           paevLogic: 'lt',
@@ -246,9 +240,69 @@ const fetchWeatherData = async (): Promise<any[]> => {
           kuu: '7',
           aastaLogic: 'lt',
           aastaInclude: false,
-          aasta: '2024'}
+          aasta: '2024'
+  }
+
+  const fetchWeatherData2 = async (): Promise<any[]> => {
+      const headers = {
+          'Accept-Profile': 'apijahiala',
+          Accept: 'application/json'
+      };
+
+      try {
+        const parameters: Record<string, string> = {
+              aasta: `${dateObject2.aastaLogic}${dateObject2.aastaInclude ? 'e' : ''}.${dateObject2.aasta}`,
+              kuu: `${dateObject2.kuuLogic}${dateObject2.kuuInclude ? 'e' : ''}.${dateObject2.kuu}`,
+              paev: `${dateObject2.paevLogic}${dateObject2.paevInclude ? 'e' : ''}.${dateObject2.paev}`,
+              element_kood: `eq.${paramCollectionList}`, // Combine elements into a comma-separated list
+              tund: "gte.0",
+              jaam_kood: `eq.${placeCollectionList}`
+          };
+
+          console.log(`Requesting data for elements: ${paramCollectionList.join(',')}`, parameters);
+
+          // Make a single request with combined parameters
+          const response = await axios.get(url, { headers, params: parameters });
+
+          if (response.status === 200) {
+              return response.data;
+          } else {
+              console.error(`Error: ${response.status}, ${response.statusText}`);
+              return [];
+          }
+      } catch (error) {
+          if (axios.isAxiosError(error)) {
+              console.error(`Axios error: ${error.response?.status}, ${error.response?.data}`);
+          } else {
+              console.error(`Unexpected error: ${error}`);
+          }
+          return [];
+      }
+  };
+
+  const handleFetchWeatherData2 = async () => {
+        try {
+          const fetchedData = await fetchWeatherData2();
+          console.log('Fetched Data:', fetchedData);
+          const filteredData = filterDataByEndDate(fetchedData, dateObject);
+          console.log(filteredData);
+          rows = []
+          filteredData.forEach(element => {
+            rows = [...rows, {
+            date: element.tund !== undefined 
+        ? `${element.aasta}-${element.kuu}-${element.paev} kell ${element.tund <= 9 ? '0' : ''}${element.tund} `
+        : `${element.aasta}-${element.kuu}-${element.paev}`,
+      values: [`${element.vaartus}${element.element_yhik_eng}`]
+    }];
+          });
+        } catch (error) {
+          console.error('Error fetching data:', error);
+        }
+      };
+    
   </script>
   
+
   <div class="flex bg-white min-h-screen">
     <!-- Sidebar -->
   
@@ -265,26 +319,7 @@ const fetchWeatherData = async (): Promise<any[]> => {
       <!-- Filters and Data -->
       <div class="bg-white p-8 rounded-lg shadow-md border border-gray-300">
         <div class="grid grid-cols-2 gap-8">
-          <!-- Left Column -->
-          <div>
-            <InputChip
-              class="w-full"
-              placeholder="Sisesta ilmajaamad..."
-              bind:input={inputChip}
-              bind:value={inputChipList}
-              name="chips"
-            />
-            <div class="card mt-4 p-4 border border-gray-200 rounded-lg max-h-48 overflow-y-auto bg-gray-50" tabindex="-1">
-              <Autocomplete
-                bind:input={inputChip}
-                options={ilmaJaamad}
-                denylist={inputChipList}
-                on:selection={onInputChipSelect}
-              />
-            </div>
-          </div>
-  
-          <!-- Right Column -->
+          <!-- Left Column: Parameetrid -->
           <div>
             <InputChip
               class="w-full"
@@ -302,10 +337,41 @@ const fetchWeatherData = async (): Promise<any[]> => {
               />
             </div>
           </div>
+  
+          <!-- Right Column: Ilmajaamad -->
+          <div>
+            <InputChip
+              class="w-full"
+              placeholder="Sisesta ilmajaamad..."
+              bind:input={inputChip}
+              bind:value={inputChipList}
+              name="chips"
+            />
+            <div class="card mt-4 p-4 border border-gray-200 rounded-lg max-h-48 overflow-y-auto bg-gray-50" tabindex="-1">
+              <Autocomplete
+                bind:input={inputChip}
+                options={ilmaJaamad}
+                denylist={inputChipList}
+                on:selection={onInputChipSelect}
+              />
+            </div>
+            <!-- Link to view Ilmajaamad locations -->
+            <p class="text-lg font-aino text-gray-800 mt-4">
+              Ilmajaamade asukohti saad vaadata 
+              <a 
+                href="https://www.ilmateenistus.ee/meist/vaatlusvork/" 
+                class="underline text-blue-600 hover:text-blue-800 transition"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                siit
+              </a>.
+            </p>
+          </div>
         </div>
   
         <!-- Date Range and Handle Data -->
-        <div class="mt-8 grid grid-cols-2 gap-8 items-center">
+        <div class="mt-8 grid grid-cols-2 items-end gap-8">
           <!-- Date Range Filter -->
           <div>
             <label for="date-range-input" class="block text-lg font-medium text-gray-700 mb-2">
@@ -317,20 +383,118 @@ const fetchWeatherData = async (): Promise<any[]> => {
               placeholder="Kliki siia ja vali!"
               class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-gray-900"
             />
+  
+            <div class="mt-8 max-w-2xl">
+              <!-- <label class="block text-lg font-medium text-gray-700 mb-2">
+                  Vali soovitud ajavahemik
+              </label> -->
+              <div class="space-y-3">
+                  <!-- Year row -->
+                  <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-300">
+                      <select bind:value={dateObject2.aastaLogic} class="bg-transparent border border-gray-300 rounded-md pl-2 pr-10 py-1 text-blue-500">
+                          <option value="eq">ainult</option>
+                          <option value="lt">varasema kui</option>
+                          <option value="gt">hilisema kui</option>
+                      </select>
+                      <input type="number" 
+                          bind:value={dateObject2.aasta} 
+                          min="1980" 
+                          max="2024" 
+                          class="w-24 border border-gray-300 rounded-md px-2 py-1"/>
+                      <span class="mr-2">aasta</span>
+                      <span class="text-gray-500 {dateObject2.aastaLogic != 'eq' ? '' : 'hidden'}">
+                          <label class="inline-flex items-center">
+                              <input type="checkbox" bind:checked={dateObject2.aastaInclude} class="rounded-md w-4 h-4 mr-1"/>
+                              kaasaarvatud
+                          </label>
+                      </span>
+                  </div>
+          
+                  <!-- Month row -->
+                  <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-300">
+                      <select bind:value={dateObject2.kuuLogic} class="bg-transparent border border-gray-300 rounded-md pl-2 pr-10 py-1 text-blue-500">
+                          <option value="eq">ainult</option>
+                          <option value="lt">esimese</option>
+                          <option value="gt">viimase</option>
+                      </select>
+                      <input type="number" 
+                          bind:value={dateObject2.kuu} 
+                          min="1" 
+                          max="12" 
+                          class="w-20 border border-gray-300 rounded-md px-2 py-1"/>
+                      <span class="mr-2">kuu</span>
+                      <span class="text-gray-500 {dateObject2.kuuLogic != 'eq' ? '' : 'hidden'}">
+                          <label class="inline-flex items-center">
+                              <input type="checkbox" bind:checked={dateObject2.kuuInclude} class="rounded-md w-4 h-4 mr-1"/>
+                              kaasaarvatud
+                          </label>
+                      </span>
+                  </div>
+          
+                  <!-- Day row -->
+                  <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-300">
+                      <select bind:value={dateObject2.paevLogic} class="bg-transparent border border-gray-300 rounded-md pl-2 pr-10 py-1 text-blue-500">
+                          <option value="eq">ainult</option>
+                          <option value="lt">esimese</option>
+                          <option value="gt">viimase</option>
+                      </select>
+                      <input type="number" 
+                          bind:value={dateObject2.paev} 
+                          min="1" 
+                          max="31" 
+                          class="w-20 border border-gray-300 rounded-md px-2 py-1"/>
+                      <span class="mr-2">päeva</span>
+                      <span class="text-gray-500 {dateObject2.paevLogic != 'eq' ? '' : 'hidden'}">
+                          <label class="inline-flex items-center">
+                              <input type="checkbox" bind:checked={dateObject2.paevInclude} class="rounded-md w-4 h-4 mr-1"/>
+                              kaasaarvatud
+                          </label>
+                      </span>
+                      </div>
+                  </div>
+              </div>
           </div>
   
           <!-- Handle Data Button -->
           <div class="flex justify-end">
             <button
               id="handle-data"
-              class="bg-blue-500 text-white py-3 px-6 rounded hover:bg-blue-600 shadow-md"
-              on:click={handleFetchWeatherData}
+              class="bg-blue-500 text-white py-3 px-10 rounded hover:bg-blue-600 shadow-md"
+              on:click={handleFetchWeatherData2}
             >
-              Handle Data
+              Filtreeri
             </button>
-              </div>
+          </div>
         </div>
+      </div>
+      <div class="w-full overflow-x-auto rounded-lg shadow-lg bg-white p-4 mt-6">
+          <table class="w-full border-collapse">
+              <thead>
+                  <tr>
+                      <th colspan={numColumns} class="px-6 py-2"></th>
+                  </tr>
+                  <tr>
+                      <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 bg-gray-200 uppercase tracking-wider rounded-l-xl">Kuupäev</th>
+                      {#each Array(numColumns - 1) as _, i}
+                          <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 bg-gray-200 uppercase tracking-wider">Väärtus {i + 1}</th>
+                      {/each}
+                  </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                  {#each rows as row}
+                      <tr class="transition-colors hover:bg-gray-50">
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {row.date}
+                          </td>
+                          {#each row.values as value}
+                              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {value || ''}
+                              </td>
+                          {/each}
+                      </tr>
+                  {/each}
+              </tbody>
+          </table>
       </div>
     </div>
   </div>
-  

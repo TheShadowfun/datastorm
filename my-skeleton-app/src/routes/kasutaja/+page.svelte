@@ -11,7 +11,7 @@
 
         // Redirect to "/" after 5 seconds
         setTimeout(() => {
-            window.location.href = "/";
+            window.location.href = "/avaandmed";
         }, 5000);
     }
 </script>
@@ -51,7 +51,7 @@
                     <h2 class="text-lg font-semibold mb-2">Smart-ID</h2>
                     <p class="text-gray-700 mb-4">
                         Teenusesse <span class="font-semibold">KESKKONNAPORTAAL</span> ja autentimise teenus sisselogimiseks vajate kehtivat Smart-ID kontot.
-                        Sisestage oma isikukood ning vajutage "Jätka". Seejärel saadetakse Teie Smart-ID rakendusse kontrollkood.
+                        Sisestage oma isikukood või kaardinumber ning vajutage "Jätka". Seejärel saadetakse Teie Smart-ID rakendusse kontrollkood.
                     </p>
                     <form on:submit={handleSubmit} class="space-y-4">
                         <div class="flex items-center">

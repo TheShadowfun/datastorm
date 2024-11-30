@@ -5,6 +5,9 @@
   import { InputChip } from '@skeletonlabs/skeleton';
   import type { AutocompleteOption } from '@skeletonlabs/skeleton';
 
+  import {SlideToggle} from '@skeletonlabs/skeleton';
+  export let isChecked = false; // Bindable prop to track toggle state
+
   import { onMount } from 'svelte';
   import flatpickr from 'flatpickr';
   import 'flatpickr/dist/flatpickr.css';
@@ -17,6 +20,10 @@
 
   let inputChipList: string[] = [];
   let inputChipListPara: string[] = [];
+
+  let showDocumentButton = false; // Track the visibility of the "Loo dokument" button
+  let isLoadingDocument = false; // Track the loading state of the button
+
 
   const ilmaJaamad: AutocompleteOption<string>[] = [
     { label: "Heltermaa", value: "AJHELT01" },
@@ -48,12 +55,6 @@
   ];
 
   const ilmaParameetrid: AutocompleteOption<string>[] = [
-    { label: "Keskmine tuulekiirus (viimased 10 min)", value: "WS10M" },
-    { label: "Tuule suund (viimased 10 min)", value: "WD10M" },
-    { label: "Keskmine tuulekiirus (10 min)", value: "WS10MA" },
-    { label: "Maksimaalne tuulekiirus (10 min)", value: "WS10MX" },
-    { label: "Tuule suund (10 min)", value: "WD10MA" },
-    { label: "Sademed (10 min)", value: "PR10M" },
     { label: "Maksimaalne tuulekiirus (1 tund)", value: "WSX1H" },
     { label: "Maksimaalne temperatuur (1 tund)", value: "TAX1H" },
     { label: "Minimaalne temperatuur (1 tund)", value: "TAN1H" },
@@ -83,6 +84,7 @@
   let paramCollectionList: string[] = [];
   let placeCollectionList: string[] = [];
 
+  // Vii kokku ilmajaamade ja parameetrite key/valued
   $: placeCollectionList = inputChipList
     .map((chipLabel) => {
       const match = ilmaJaamad.find((station) => station.label === chipLabel);
@@ -96,7 +98,8 @@
       return match ? match.value : '';
     })
     .filter((value) => value !== '');
-
+  
+  // Mounti date range picker
   onMount(() => {
     flatpickr('#date-range-input', {
       mode: 'range',
@@ -105,6 +108,7 @@
     });
   });
 
+  // Tükeldatud kuupäevad
   let dateObject = {
     startDay: '',
     startMonth: '',
@@ -132,65 +136,181 @@
   function removeLeadingZero(value: number): string {
     return parseInt(value.toString(), 10).toString();
   }
-
+  
+  // Api request valitud paradega
   const url = 'https://keskkonnaandmed.envir.ee/f_kliima_tund';
 
   const fetchWeatherData = async (): Promise<any[]> => {
-    const parameters: Record<string, string> = {
-        aasta: `gte.${dateObject.startYear}`,
-        kuu: `gte.${dateObject.startMonth}`,
-        paev: `gte.${dateObject.startDay}`,
-        element_kood: `eq.${paramCollectionList}`,
-        tund: "gte.0",
-        jaam_kood: `eq.${placeCollectionList}`
-    };
+        const headers = {
+            'Accept-Profile': 'apijahiala',
+            Accept: 'application/json'
+        };
 
-    const headers = {
-      'Accept-Profile': 'apijahiala',
-      Accept: 'application/json'
-    };
+        const results: any[] = [];
 
-    try {
-      const response = await axios.get(url, { headers, params: parameters });
+        try {
+            // Loop through each parameter in paramCollectionList
+            for (const param of paramCollectionList) {
+                const parameters: Record<string, string> = {
+                    aasta: `gte.${dateObject.startYear}`,
+                    kuu: `gte.${dateObject.startMonth}`,
+                    paev: `gte.${dateObject.startDay}`,
+                    element_kood: `eq.${param}`,
+                    tund: "gte.0",
+                    jaam_kood: `eq.${placeCollectionList}`
+                };
 
-      if (response.status === 200) {
-        return response.data;
-      } else {
-        console.error(`Error: ${response.status}, ${response.statusText}`);
-        return [];
-      }
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error(`Axios error: ${error.response?.status}, ${error.response?.data}`);
-      } else {
-        console.error(`Unexpected error: ${error}`);
-      }
-      return [];
-    }
-  };
+                console.log(`Requesting data for parameter: ${param}`);
+
+                // Make an individual request for each parameter
+                const response = await axios.get(url, { headers, params: parameters });
+
+                if (response.status === 200) {
+                    results.push(response.data);
+                } else {
+                    console.error(`Error: ${response.status}, ${response.statusText}`);
+                }
+            }
+
+            return results;
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.error(`Axios error: ${error.response?.status}, ${error.response?.data}`);
+            } else {
+                console.error(`Unexpected error: ${error}`);
+            }
+            return [];
+        }
+        };
   
   let rows = [{date: '', values: ['']}] //{date: '2023-01-02', values: Array(6).fill('')}
-  
+  let selectedParams: string[] = [];
+$: selectedParams = [...inputChipListPara];
+  // Toimingud saadud dataga
   const handleFetchWeatherData = async () => {
     try {
       const fetchedData = await fetchWeatherData();
+      selectedParams.push(...inputChipListPara);
+      console.log(selectedParams)
       console.log('Fetched Data:', fetchedData);
       const filteredData = filterDataByEndDate(fetchedData, dateObject);
       console.log(filteredData);
       rows = []
-      filteredData.forEach(element => {
+    filteredData.forEach((object) => {
+      object.forEach((element: { tund?: number; aasta: string; kuu: string; paev: string; vaartus: string; element_yhik_eng: string }) => {
+        const dateKey = element.tund !== undefined 
+        ? `${element.aasta}-${element.kuu}-${element.paev} kell ${element.tund <= 9 ? '0' : ''}${element.tund} `
+        : `${element.aasta}-${element.kuu}-${element.paev}`;
+        
+        const existingRow = rows.find(row => row.date === dateKey);
+        if (existingRow) {
+        existingRow.values.push(`${element.vaartus}${element.element_yhik_eng}`);
+        } else {
         rows = [...rows, {
-        date: element.tund !== undefined 
-    ? `${element.aasta}-${element.kuu}-${element.paev} kell ${element.tund <= 9 ? '0' : ''}${element.tund} `
-    : `${element.aasta}-${element.kuu}-${element.paev}`,
-  values: [`${element.vaartus}${element.element_yhik_eng}`]
-}];
+          date: dateKey,
+          values: [`${element.vaartus}${element.element_yhik_eng}`]
+        }];
+        }
       });
+    });
+      
     } catch (error) {
       console.error('Error fetching data:', error);
     }
   };
 
+let scrollOnPress = () => {
+    // Smooth scroll after filtering
+    try {
+        const tableElement = document.querySelector('.w-full.overflow-x-auto');
+        tableElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+        console.error('Error fetching data:', error);
+    }
+};
+
+let dateObject2 = {
+        paevLogic: 'lt',
+        paevInclude: false,
+        paev: '23',
+        kuuLogic: 'eq',
+        kuuInclude: false,
+        kuu: '7',
+        aastaLogic: 'gt',
+        aastaInclude: true,
+        aasta: '2023'}
+
+const fetchWeatherData2 = async (): Promise<any[]> => {
+  const headers = {
+      'Accept-Profile': 'apijahiala',
+      Accept: 'application/json'
+  };
+
+  try {
+    const parameters: Record<string, string> = {
+          aasta: `${dateObject2.aastaLogic}${dateObject2.aastaInclude ? 'e' : ''}.${dateObject2.aasta}`,
+          kuu: `${dateObject2.kuuLogic}${dateObject2.kuuInclude ? 'e' : ''}.${dateObject2.kuu}`,
+          paev: `${dateObject2.paevLogic}${dateObject2.paevInclude ? 'e' : ''}.${dateObject2.paev}`,
+          element_kood: `eq.${paramCollectionList}`, // Combine elements into a comma-separated list
+          tund: "gte.0",
+          jaam_kood: `eq.${placeCollectionList}`
+      };
+
+      console.log(`Requesting data for elements: ${paramCollectionList.join(',')}`, parameters);
+
+      // Make a single request with combined parameters
+      const response = await axios.get(url, { headers, params: parameters });
+
+      if (response.status === 200) {
+          return [response.data];
+      } else {
+          console.error(`Error: ${response.status}, ${response.statusText}`);
+          return [];
+      }
+  } catch (error) {
+      if (axios.isAxiosError(error)) {
+          console.error(`Axios error: ${error.response?.status}, ${error.response?.data}`);
+      } else {
+          console.error(`Unexpected error: ${error}`);
+      }
+      return [];
+  }
+};
+
+// Toimingud saadud dataga advanced date pick
+const handleFetchWeatherData2 = async () => {
+  try {
+    const fetchedData = await fetchWeatherData2();
+    selectedParams.push(...inputChipListPara);
+    console.log(selectedParams)
+    console.log('Fetched Data:', fetchedData);
+    const filteredData = filterDataByEndDate(fetchedData, dateObject);
+    console.log(filteredData);
+    rows = []
+    filteredData.forEach((object) => {
+    object.forEach((element: { tund?: number; aasta: string; kuu: string; paev: string; vaartus: string; element_yhik_eng: string }) => {
+      const dateKey = element.tund !== undefined 
+      ? `${element.aasta}-${element.kuu}-${element.paev} kell ${element.tund <= 9 ? '0' : ''}${element.tund} `
+      : `${element.aasta}-${element.kuu}-${element.paev}`;
+      
+      const existingRow = rows.find(row => row.date === dateKey);
+      if (existingRow) {
+      existingRow.values.push(`${element.vaartus}${element.element_yhik_eng}`);
+      } else {
+      rows = [...rows, {
+        date: dateKey,
+        values: [`${element.vaartus}${element.element_yhik_eng}`]
+      }];
+      }
+    });
+  });
+    
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  }
+};
+
+// Filteri vahemik vastavalt valitud kuupäevadele
   const filterDataByEndDate = (
     data: any[],
     dateObject: { endYear: string; endMonth: string; endDay: string }
@@ -225,17 +345,6 @@
   };
 
 $: numColumns = Math.max(...rows.map(row => row.values.length)) + 1;
-
-let dateObject2 = {
-        paevLogic: 'lt',
-        paevInclude: false,
-        paev: '23',
-        kuuLogic: 'eq',
-        kuuInclude: false,
-        kuu: '7',
-        aastaLogic: 'lt',
-        aastaInclude: false,
-        aasta: '2024'}
 </script>
 
 <div class="flex bg-white min-h-screen">
@@ -251,7 +360,6 @@ let dateObject2 = {
         Siin saad andmeid filtreerida ning päringu saata.
       </p>
     </div>
-
     <!-- Filters and Data -->
     <div class="bg-white p-8 rounded-lg shadow-md border border-gray-300">
       <div class="grid grid-cols-2 gap-8">
@@ -305,35 +413,148 @@ let dateObject2 = {
           </p>
         </div>
       </div>
+    <!-- Date Range and Handle Data -->
+    <div class="mt-8 flex items-start gap-8">
+        <!-- Left Column -->
+        <div class="flex-1">
+            <!-- Label and Toggle -->
+            <div class="flex items-center justify-between">
+                <label class="block text-lg font-medium text-gray-700 mb-2">
+                    Vali soovitud ajavahemik
+                </label>
+                <div class="flex items-center text-sm mt-4">
+                    <SlideToggle 
+                        name="slider-label" 
+                        bind:checked={isChecked}
+                        class="text-sm text-gray-600"
+                    >
+                        Täpsemad ajasätted
+                    </SlideToggle>
+                </div>
+            </div>
 
-      <!-- Date Range and Handle Data -->
-      <div class="mt-8 grid grid-cols-2 items-end gap-8">
-        <!-- Date Range Filter -->
-        <div>
-          <label for="date-range-input" class="block text-lg font-medium text-gray-700 mb-2">
-            Vali soovitud ajavahemik
-          </label>
-          <input
-            id="date-range-input"
-            type="text"
-            placeholder="Kliki siia ja vali!"
-            class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-gray-900"
-          />
+            {#if isChecked}
+                <!-- Advanced Date Settings -->
+                <div class="mt-4 max-w-2xl">
+                    <div class="space-y-3">
+                        <!-- Year row -->
+                        <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-300 max-w-max">
+                            <select bind:value={dateObject2.aastaLogic} class="bg-transparent border border-gray-300 rounded-md pl-2 pr-10 py-1 text-blue-500">
+                                <option value="eq">ainult</option>
+                                <option value="lt">varasema kui</option>
+                                <option value="gt">hilisema kui</option>
+                            </select>
+                            <input type="number" 
+                                bind:value={dateObject2.aasta} 
+                                min="1980" 
+                                max="2024" 
+                                class="w-24 border border-gray-300 rounded-md px-2 py-1"/>
+                            <span class="mr-2">aasta</span>
+                            <span class="text-gray-500 {dateObject2.aastaLogic != 'eq' ? '' : 'hidden'}">
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" bind:checked={dateObject2.aastaInclude} class="rounded-md w-4 h-4 mr-1"/>
+                                    kaasaarvatud
+                                </label>
+                            </span>
+                        </div>
+                
+                        <!-- Month row -->
+                        <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-300 max-w-max">
+                            <select bind:value={dateObject2.kuuLogic} class="bg-transparent border border-gray-300 rounded-md pl-2 pr-10 py-1 text-blue-500">
+                                <option value="eq">ainult</option>
+                                <option value="lt">esimese</option>
+                                <option value="gt">viimase</option>
+                            </select>
+                            <input type="number" 
+                                bind:value={dateObject2.kuu} 
+                                min="1" 
+                                max="12" 
+                                class="w-20 border border-gray-300 rounded-md px-2 py-1"/>
+                            <span class="mr-2">kuu</span>
+                            <span class="text-gray-500 {dateObject2.kuuLogic != 'eq' ? '' : 'hidden'}">
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" bind:checked={dateObject2.kuuInclude} class="rounded-md w-4 h-4 mr-1"/>
+                                    kaasaarvatud
+                                </label>
+                            </span>
+                        </div>
+                
+                        <!-- Day row -->
+                        <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-300 max-w-max">
+                            <select bind:value={dateObject2.paevLogic} class="bg-transparent border border-gray-300 rounded-md pl-2 pr-10 py-1 text-blue-500">
+                                <option value="eq">ainult</option>
+                                <option value="lt">esimese</option>
+                                <option value="gt">viimase</option>
+                            </select>
+                            <input type="number" 
+                                bind:value={dateObject2.paev} 
+                                min="1" 
+                                max="31" 
+                                class="w-20 border border-gray-300 rounded-md px-2 py-1"/>
+                            <span class="mr-2">päeva</span>
+                            <span class="text-gray-500 {dateObject2.paevLogic != 'eq' ? '' : 'hidden'}">
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" bind:checked={dateObject2.paevInclude} class="rounded-md w-4 h-4 mr-1"/>
+                                    kaasaarvatud
+                                </label>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            {:else}
+                <!-- Date Range Filter -->
+                <!-- Date Range Input -->
+                <input
+                id="date-range-input"
+                type="text"
+                placeholder="Kliki siia ja vali!"
+                class="w-80 p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-gray-900"
+              />
+            {/if}
         </div>
 
-        <!-- Handle Data Button -->
-        <div class="flex justify-end">
-          <button
-            id="handle-data"
-            class="bg-blue-500 text-white py-3 px-10 rounded hover:bg-blue-600 shadow-md"
-            on:click={handleFetchWeatherData}
-          >
-            Filtreeri
-          </button>
+        <!-- Filter Button -->
+        <div class="flex items-end mt-4">
+            <button
+                id="handle-data"
+                class="bg-blue-500 text-white py-3 px-10 rounded hover:bg-blue-600 shadow-md"
+                on:click={isChecked ? handleFetchWeatherData2 : handleFetchWeatherData}
+            >
+                Filtreeri
+            </button>
         </div>
-      </div>
+    </div>
+    </div>
+    <div class="w-full overflow-x-auto rounded-lg shadow-lg bg-white p-4 mt-6">
+        <table class="w-full border-collapse">
+            <thead>
+                <tr>
+                    <th colspan={numColumns} class="px-6 py-2"></th>
+                </tr>
+                <tr>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 bg-gray-200 uppercase tracking-wider rounded-l-xl">Kuupäev</th>
+                    {#each selectedParams as param}
+                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 bg-gray-200 uppercase tracking-wider {param === selectedParams[selectedParams.length - 1] ? 'rounded-r-xl' : ''}">
+                            {param}
+                        </th>
+                    {/each}
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {#each rows as row}
+                    <tr class="transition-colors hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {row.date}
+                        </td>
+                        {#each row.values as value}
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {value || ''}
+                            </td>
+                        {/each}
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
     </div>
   </div>
 </div>
-
-
